@@ -31,57 +31,44 @@ import (
 // @Security		ApiKey || AccessToken
 func HandleSSE() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		stopChan := make(chan bool)
-		var writeLock sync.Mutex
-
 		ctx, cancel := gincontext.GetRorContextFromGinContext(c)
 		defer cancel()
+
 		identity := rorcontext.MustGetIdentityFromRorContext(ctx)
 		client := &sseservice.EventClient{
 			Id:         sseservice.NewEventClientId(),
 			Identity:   identity,
-			Connection: make(sseservice.EventClientChan),
+			Connection: make(sseservice.EventClientChan, 16),
 		}
-		sseservice.Server.NewClients <- client
-		// Send new connection to event server
 
-		defer func() {
-			stopChan <- true
-		}()
-		go func() {
-			for {
-				select {
-				case <-stopChan:
-					go func() {
-						for range client.Connection {
-						}
-					}()
-					// Send closed connection to event server
+		registered := false
+		closeOnce := sync.Once{}
+		cleanup := func() {
+			closeOnce.Do(func() {
+				if registered {
 					sseservice.Server.ClosedClients <- client.Id
-					cancel()
-					return
-				default:
-					time.Sleep(time.Second * 1)
-					writeLock.Lock()
-					_, _ = c.Writer.Write([]byte(":keepalive\n"))
-					c.Writer.Flush()
-					writeLock.Unlock()
 				}
-			}
-		}()
+				cancel()
+			})
+		}
+		defer cleanup()
+
+		select {
+		case sseservice.Server.NewClients <- client:
+			registered = true
+		case <-c.Request.Context().Done():
+			return
+		}
 
 		c.Stream(func(w io.Writer) bool {
 			select {
 			case msg, ok := <-client.Connection:
-				if ok {
-					writeLock.Lock()
-					c.SSEvent(msg.Event, msg.Data)
-					writeLock.Unlock()
-					return true
+				if !ok {
+					return false
 				}
-				return false
+				c.SSEvent(msg.Event, msg.Data)
+				return true
 			case <-c.Request.Context().Done():
-				stopChan <- true
 				return false
 			}
 		})
