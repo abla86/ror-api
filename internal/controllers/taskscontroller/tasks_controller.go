@@ -111,6 +111,7 @@ func GetAll() gin.HandlerFunc {
 		if err != nil {
 			rerr := rorginerror.NewRorGinError(http.StatusInternalServerError, "Could not find tasks ...", err)
 			rerr.GinLogErrorAbort(c)
+			return
 		}
 
 		c.JSON(http.StatusOK, tasks)
@@ -284,7 +285,7 @@ func Delete() gin.HandlerFunc {
 		ctx, cancel := gincontext.GetRorContextFromGinContext(c)
 		defer cancel()
 
-		taskId := c.Param("taskId")
+		taskId := c.Param("id")
 		if taskId == "" || len(taskId) == 0 {
 			rlog.Errorc(ctx, "invalid id", fmt.Errorf("id is zero length"))
 			rerr := rorginerror.NewRorGinError(http.StatusBadRequest, "Invalid id")
