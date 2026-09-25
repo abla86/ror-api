@@ -70,7 +70,11 @@ func (es *EventServer) listen() {
 						rlog.Warnf("Ignoring SSE event for unknown client %s", clientid)
 						continue
 					}
-					eventClient.Connection <- SseEvent{Event: eventMsg.Event, Data: eventMsg.Data}
+					select {
+					case eventClient.Connection <- SseEvent{Event: eventMsg.Event, Data: eventMsg.Data}:
+					default:
+						rlog.Warnf("Dropping SSE event for slow client %s", clientid)
+					}
 				}
 			}
 		}
