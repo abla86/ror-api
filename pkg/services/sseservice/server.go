@@ -53,7 +53,7 @@ func (es *EventServer) listen() {
 		case client := <-es.ClosedClients:
 			eventClient := es.Clients.Get(client)
 			if eventClient == nil {
-				rlog.Warnf("Ignoring close request for unknown sse client %s", client)
+				rlog.Warn("Ignoring close request for unknown sse client", rlog.String("client_id", string(client)))
 				continue
 			}
 
@@ -67,13 +67,13 @@ func (es *EventServer) listen() {
 				for _, clientid := range eventMsg.Clients {
 					eventClient := es.Clients.Get(clientid)
 					if eventClient == nil {
-						rlog.Warnf("Ignoring SSE event for unknown client %s", clientid)
+						rlog.Warn("Ignoring SSE event for unknown client", rlog.String("client_id", string(clientid)))
 						continue
 					}
 					select {
 					case eventClient.Connection <- SseEvent{Event: eventMsg.Event, Data: eventMsg.Data}:
 					default:
-						rlog.Warnf("Dropping SSE event for slow client %s", clientid)
+						rlog.Warn("Dropping SSE event for slow client", rlog.String("client_id", string(clientid)))
 					}
 				}
 			}
