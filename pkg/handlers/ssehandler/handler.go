@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/NorskHelsenett/ror-api/internal/apiconnections"
 	"github.com/NorskHelsenett/ror-api/pkg/services/sseservice"
