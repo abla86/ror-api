@@ -1,7 +1,11 @@
 name: Test and build API
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
+    branches:
     branches:
       - main
     paths-ignore:
